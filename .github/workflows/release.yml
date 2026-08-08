@@ -1,0 +1,72 @@
+name: Release
+
+# Cut a release by pushing a tag: `git tag v2.0.0 && git push origin v2.0.0`
+# (or run it by hand from the Actions tab). Builds on GitHub's own macOS runner,
+# which is $0 for public repos, and attaches a universal DMG + zip to a draft
+# GitHub Release you publish with one click.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write # create/upload the GitHub Release
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build universal app
+        run: ./build.sh
+
+      # The version in Info.plist is the source of truth; a tag that disagrees
+      # with it means the release would ship a build labelled something else.
+      - name: Check the tag matches Info.plist
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          plist_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' StayAwake/Info.plist)"
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [ "$plist_version" != "$tag_version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME says $tag_version but Info.plist says $plist_version"
+            exit 1
+          fi
+          echo "version $plist_version"
+
+      - name: Package DMG + zip
+        run: |
+          mkdir -p release
+          # ditto, not `zip` — it is the only archiver that preserves the bundle's
+          # symlinks and resource forks, so the unzipped .app still launches.
+          ditto -c -k --sequesterRsrc --keepParent "dist/Stay Awake.app" "release/StayAwake-${GITHUB_REF_NAME:-dev}.zip"
+
+          # Plain drag-to-Applications DMG. No background art, no license panel —
+          # hdiutil alone, so there is no create-dmg dependency to rot.
+          staging="$(mktemp -d)"
+          cp -R "dist/Stay Awake.app" "$staging/"
+          ln -s /Applications "$staging/Applications"
+          hdiutil create -volname "Stay Awake" \
+            -srcfolder "$staging" \
+            -ov -format UDZO \
+            "release/StayAwake-${GITHUB_REF_NAME:-dev}.dmg"
+          rm -rf "$staging"
+          ls -la release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stay-awake-macos
+          path: release/*
+
+      - name: Publish to the GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" \
+                 --repo "$GITHUB_REPOSITORY" \
+                 --draft \
+                 --title "$GITHUB_REF_NAME" \
+                 --notes-file .github/RELEASE_NOTES.md
+          gh release upload "$GITHUB_REF_NAME" release/* --clobber --repo "$GITHUB_REPOSITORY"
