@@ -1,6 +1,6 @@
 name: Release
 
-# Cut a release by pushing a tag: `git tag v2.0.0 && git push origin v2.0.0`
+# Cut a release by pushing a tag: `git tag v2.1 && git push origin v2.1`
 # (or run it by hand from the Actions tab). Builds on GitHub's own macOS runner,
 # which is $0 for public repos, and attaches a universal DMG + zip to a draft
 # GitHub Release you publish with one click.

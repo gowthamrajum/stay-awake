@@ -126,7 +126,7 @@ master, so the 16pt bulb keeps its strokes.
 Version lives in `StayAwake/Info.plist`. Bump it, tag it, push the tag:
 
 ```bash
-git tag v2.0.0 && git push origin v2.0.0
+git tag v2.1 && git push origin v2.1
 ```
 
 The workflow builds a universal app on a macOS runner, refuses the release if
