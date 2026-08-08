@@ -13,21 +13,51 @@ background daemon — **quit the app and the assertion dies with it.**
 
 ## Install
 
-Grab the `.dmg` from [Releases](https://github.com/gowthamrajum/stay-awake/releases),
-open it, drag **Stay Awake** to Applications.
+### From source — the path with no Gatekeeper in it
 
-The build is unsigned (no paid Apple Developer ID), so the *first* launch needs
-a **right-click → Open → Open**. macOS remembers the exception; every launch
-after that is a normal double-click.
-
-Or build it from source — one Swift file, one script, no dependencies beyond the
-Command Line Tools:
+One Swift file, one script, nothing beyond the Command Line Tools:
 
 ```bash
+git clone https://github.com/gowthamrajum/stay-awake.git
+cd stay-awake
 ./build.sh --install     # universal binary, straight into /Applications
+```
+
+```bash
 ./build.sh               # just build into dist/
 ./build.sh --native      # this Mac's arch only; faster while iterating
 ```
+
+An app you compiled yourself never gets a quarantine flag, so it simply opens.
+This is the recommended route and it takes about a minute.
+
+### From the DMG
+
+Grab it from [Releases](https://github.com/gowthamrajum/stay-awake/releases),
+open it, drag **Stay Awake** to Applications. Then expect this on first launch:
+
+> "Stay Awake" can't be opened because Apple cannot check it for malicious
+> software.
+
+That is Gatekeeper, not a corrupt download. The build is signed ad-hoc — there
+is no paid Apple Developer ID behind this project — and macOS refuses ad-hoc
+binaries that arrive carrying a download's quarantine flag.
+
+**On macOS 15 and later, right-clicking → Open does not get past this.** Apple
+removed that bypass. Two things actually work:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Stay Awake.app"
+```
+
+Strip the flag and it opens normally from then on. Or, without a terminal: try
+to open it once, let it be blocked, then go to **System Settings → Privacy &
+Security**, scroll to **Security**, and click **Open Anyway** next to the
+message about Stay Awake.
+
+Both are the same decision — you are vouching for a binary Apple has not
+notarised. If you would rather not, build from source above and read the ~600
+lines you are running.
 
 ## Using it
 
